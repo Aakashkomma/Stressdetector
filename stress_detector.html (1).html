@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stress Detector App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #3498db; /* Blue background */
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        .splash-screen, .login-container, .signin-container, .forgot-container, .main-menu, .camera-interface, .upload-interface, .settings-menu {
+            display: none;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            box-sizing: border-box;
+        }
+        .splash-screen.active, .login-container.active, .signin-container.active, .forgot-container.active, .main-menu.active, .camera-interface.active, .upload-interface.active, .settings-menu.active {
+            display: block;
+        }
+        .camera-interface {
+            background-color: #d4edda; /* Light green for camera */
+        }
+        .upload-interface {
+            background-color: #2ecc71; /* Green for upload */
+        }
+        .s-logo {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 20px auto;
+        }
+        .s-logo::before, .s-logo::after {
+            content: '';
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border: 10px solid #ffffff;
+            border-radius: 50%;
+            box-sizing: border-box;
+        }
+        .s-logo::before {
+            top: 0;
+            left: 0;
+            border-bottom: none;
+            border-right: none;
+            transform: rotate(-45deg);
+        }
+        .s-logo::after {
+            bottom: 0;
+            right: 0;
+            border-top: none;
+            border-left: none;
+            transform: rotate(-45deg);
+        }
+        .splash-screen.active .s-logo {
+            animation: spin 1s linear 2; /* Spin 2 times in 2 seconds */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .settings-menu {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #3498db;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .settings-icon {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        input, button {
+            margin: 10px 0;
+            padding: 10px;
+            width: 90%;
+            border-radius: 5px;
+            border: none;
+            display: block;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        button {
+            background-color: #2980b9;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1abc9c;
+        }
+        .back-btn, .quit-btn, .logout-btn {
+            background-color: #e74c3c; /* Red for back/quit/logout */
+        }
+        #video, #capturedImage {
+            width: 100%;
+            max-width: 320px;
+            border-radius: 10px;
+        }
+        .emoji {
+            font-size: 40px;
+            margin: 15px 0;
+        }
+        .password-container {
+            position: relative;
+            width: 90%;
+            margin: 10px auto;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+        .flower {
+            position: absolute;
+            font-size: 25px;
+            animation: fall 8s linear infinite;
+            z-index: 0;
+        }
+        .big-flower {
+            position: absolute;
+            font-size: 100px;
+            opacity: 0.2;
+            z-index: 0;
+        }
+        @keyframes fall {
+            0% { top: -50px; opacity: 1; }
+            100% { top: 100vh; opacity: 0; }
+        }
+        @media (max-width: 480px) {
+            .container { padding: 5px; }
+            input, button { width: 95%; padding: 8px; font-size: 14px; }
+            #video, #capturedImage { max-width: 100%; }
+            .emoji { font-size: 30px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Splash Screen -->
+        <div class="splash-screen active" id="splashScreen">
+            <div class="s-logo"></div>
+        </div>
+
+        <!-- Login Interface -->
+        <div class="login-container" id="loginContainer">
+            <h1>Stress Detector</h1>
+            <h2>Login</h2>
+            <input type="text" id="loginName" placeholder="Username">
+            <div class="password-container">
+                <input type="password" id="loginPassword" placeholder="Password">
+                <span class="toggle-password" onclick="togglePassword('loginPassword')">👁</span>
+            </div>
+            <button onclick="login()">Login</button>
+            <button onclick="showSignin()">Sign In</button>
+            <button onclick="showForgot()">Forgot User/Password</button>
+            <button class="quit-btn" onclick="quit()">Quit</button>
+        </div>
+
+        <!-- Sign In Interface -->
+        <div class="signin-container" id="signinContainer">
+            <h1>Stress Detector</h1>
+            <h2>Sign In</h2>
+            <input type="text" id="signinName" placeholder="Username">
+            <input type="tel" id="signinPhone" placeholder="Phone Number (10 digits, starts with 6-9)" maxlength="10" oninput="restrictPhoneInput(this)">
+            <div class="password-container">
+                <input type="password" id="signinPassword" placeholder="Password">
+                <span class="toggle-password" onclick="togglePassword('signinPassword')">👁</span>
+            </div>
+            <div class="password-container">
+                <input type="password" id="signinConfirmPassword" placeholder="Confirm Password">
+                <span class="toggle-password" onclick="togglePassword('signinConfirmPassword')">👁</span>
+            </div>
+            <button onclick="signin()">Sign In</button>
+            <button class="back-btn" onclick="showLogin()">Back</button>
+        </div>
+
+        <!-- Forgot Interface -->
+        <div class="forgot-container" id="forgotContainer">
+            <h1>Stress Detector</h1>
+            <h2>Forgot User/Password</h2>
+            <input type="tel" id="forgotPhone" placeholder="Phone Number (10 digits, starts with 6-9)" maxlength="10" oninput="restrictPhoneInput(this)">
+            <input type="text" id="forgotOtp" placeholder="Enter OTP" style="display: none;">
+            <div class="password-container" style="display: none;">
+                <input type="password" id="forgotNewPassword" placeholder="New Password">
+                <span class="toggle-password" onclick="togglePassword('forgotNewPassword')">👁</span>
+            </div>
+            <div class="password-container" style="display: none;">
+                <input type="password" id="forgotConfirmPassword" placeholder="Confirm New Password">
+                <span class="toggle-password" onclick="togglePassword('forgotConfirmPassword')">👁</span>
+            </div>
+            <button id="generateOtpBtn" onclick="generateOtp()">Generate OTP</button>
+            <button id="resetBtn" onclick="resetPassword()" style="display: none;">Reset Password</button>
+            <button class="back-btn" onclick="showLogin()">Back</button>
+            <p id="otpTimer"></p>
+        </div>
+
+        <!-- Main Menu -->
+        <div class="main-menu" id="mainMenu">
+            <h2>Stress Detector</h2>
+            <button onclick="openCamera()">Open Camera</button>
+            <button onclick="uploadImage()">Upload Image</button>
+            <button class="back-btn" onclick="showLogin()">Back</button>
+            <span class="settings-icon" onclick="toggleSettings()">⚙</span>
+        </div>
+
+        <!-- Camera Interface -->
+        <div class="camera-interface" id="cameraInterface">
+            <video id="video" autoplay></video>
+            <button onclick="captureImage()">Capture Image</button>
+            <button class="back-btn" onclick="backToMenu()">Back</button>
+        </div>
+
+        <!-- Upload Interface -->
+        <div class="upload-interface" id="uploadInterface">
+            <input type="file" id="imageUpload" accept="image/*" capture="camera"> <!-- Forces camera -->
+            <img id="capturedImage" style="display: none;">
+            <div id="stressResult"></div>
+            <button onclick="openCamera()">Open Camera</button>
+            <button onclick="uploadImage()">Upload Image</button>
+            <button class="back-btn" onclick="backToMenu()">Back</button>
+        </div>
+
+        <!-- Settings Menu -->
+        <div class="settings-menu" id="settingsMenu">
+            <button onclick="showAccount()">Account</button>
+            <button onclick="showAbout()">About</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+            <button class="back-btn" onclick="toggleSettings()">Back</button>
+        </div>
+    </div>
+
+    <script>
+        let users = JSON.parse(localStorage.getItem('users')) || {};
+        let currentUser = null;
+        let currentOtp = '';
+        let otpTimer;
+
+        // Splash Screen
+        setTimeout(() => {
+            document.getElementById('splashScreen').classList.remove('active');
+            showLogin();
+            startFlowerAnimation();
+        }, 2000); // 2 seconds for 2 spins (1s each)
+
+        // Utility Functions
+        function togglePassword(id) {
+            const input = document.getElementById(id);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        function restrictPhoneInput(input) {
+            let value = input.value.replace(/\D/g, '');
+            if (value.length > 0 && !/^[6-9]/.test(value)) value = '';
+            if (value.length > 10) value = value.slice(0, 10);
+            input.value = value;
+        }
+
+        function validatePhone(phone) {
+            return /^[6-9]\d{9}$/.test(phone);
+        }
+
+        function sendSMS(phone, message) {
+            console.log(`SMS to ${phone}: ${message}`);
+            alert(`SMS sent to ${phone}: ${message}`); // Simulated SMS
+        }
+
+        // Navigation Functions
+        function showSection(sectionId) {
+            const sections = ['splashScreen', 'loginContainer', 'signinContainer', 'forgotContainer', 'mainMenu', 'cameraInterface', 'uploadInterface', 'settingsMenu'];
+            sections.forEach(id => document.getElementById(id).classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+            if (sectionId === 'mainMenu' || sectionId === 'settingsMenu') {
+                document.body.style.background = '#3498db url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ctext x=\'10\' y=\'90\' font-size=\'80\' fill=\'rgba(255,255,255,0.2)\'%3E🌸%3C/text%3E%3C/svg%3E") repeat';
+                startBigFlowerBackground();
+            } else {
+                document.body.style.background = '#3498db';
+                document.querySelectorAll('.big-flower').forEach(f => f.remove());
+            }
+            if (sectionId !== 'cameraInterface' && sectionId !== 'uploadInterface') startFlowerAnimation();
+            else document.querySelectorAll('.flower').forEach(f => f.remove());
+        }
+
+        function showLogin() { 
+            showSection('loginContainer'); 
+            document.getElementById('forgotOtp').style.display = 'none';
+            document.getElementById('forgotNewPassword').parentElement.style.display = 'none';
+            document.getElementById('forgotConfirmPassword').parentElement.style.display = 'none';
+            document.getElementById('resetBtn').style.display = 'none';
+            document.getElementById('otpTimer').innerText = '';
+            if (otpTimer) clearInterval(otpTimer);
+        }
+        function showSignin() { showSection('signinContainer'); }
+        function showForgot() { showSection('forgotContainer'); }
+        function backToMenu() { showSection('mainMenu'); }
+
+        // Authentication Functions
+        function login() {
+            const name = document.getElementById('loginName').value;
+            const password = document.getElementById('loginPassword').value;
+            if (users[name] && users[name].password === password) {
+                currentUser = users[name];
+                showSection('mainMenu');
+            } else {
+                alert('Invalid credentials!');
+            }
+        }
+
+        function signin() {
+            const name = document.getElementById('signinName').value;
+            const phone = document.getElementById('signinPhone').value;
+            const password = document.getElementById('signinPassword').value;
+            const confirmPassword = document.getElementById('signinConfirmPassword').value;
+
+            if (!name || !phone || !password) return alert('All fields are required!');
+            if (!validatePhone(phone)) return alert('Phone must be 10 digits starting with 6-9.');
+            if (password !== confirmPassword) return alert('Passwords do not match!');
+            if (users[name]) {
+                alert('Username already exists! Redirecting to login.');
+                showLogin();
+                return;
+            }
+
+            users[name] = { name, phone, password, gender: '' };
+            localStorage.setItem('users', JSON.stringify(users));
+            alert('Sign in successful! Please log in.');
+            showLogin();
+        }
+
+        function generateOtp() {
+            const phone = document.getElementById('forgotPhone').value;
+            if (!validatePhone(phone)) return alert('Phone must be 10 digits starting with 6-9.');
+            let userFound = false;
+            for (let user in users) {
+                if (users[user].phone === phone) {
+                    userFound = true;
+                    break;
+                }
+            }
+            if (!userFound) return alert('Phone number not registered. Please sign in.');
+            currentOtp = Math.floor(1000 + Math.random() * 9000).toString();
+            sendSMS(phone, `Stress Detector OTP: ${currentOtp}. Expires in 2 minutes.`);
+            document.getElementById('forgotOtp').style.display = 'block';
+            document.getElementById('forgotNewPassword').parentElement.style.display = 'block';
+            document.getElementById('forgotConfirmPassword').parentElement.style.display = 'block';
+            document.getElementById('resetBtn').style.display = 'block';
+            startOtpTimer();
+        }
+
+        function startOtpTimer() {
+            let timeLeft = 120; // 2 minutes
+            document.getElementById('otpTimer').innerText = `Time left: ${Math.floor(timeLeft / 60)}m ${timeLeft % 60}s`;
+            otpTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('otpTimer').innerText = `Time left: ${Math.floor(timeLeft / 60)}m ${timeLeft % 60}s`;
+                if (timeLeft <= 0) {
+                    clearInterval(otpTimer);
+                    document.getElementById('otpTimer').innerText = 'OTP expired. Generate again.';
+                    document.getElementById('forgotOtp').style.display = 'none';
+                    document.getElementById('forgotNewPassword').parentElement.style.display = 'none';
+                    document.getElementById('forgotConfirmPassword').parentElement.style.display = 'none';
+                    document.getElementById('resetBtn').style.display = 'none';
+                }
+            }, 1000);
+        }
+
+        function resetPassword() {
+            const phone = document.getElementById('forgotPhone').value;
+            const otp = document.getElementById('forgotOtp').value;
+            const newPassword = document.getElementById('forgotNewPassword').value;
+            const confirmPassword = document.getElementById('forgotConfirmPassword').value;
+
+            if (!validatePhone(phone)) return alert('Phone must be 10 digits starting with 6-9.');
+            if (newPassword !== confirmPassword) return alert('Passwords do not match!');
+            if (otp === currentOtp && otpTimer) {
+                for (let user in users) {
+                    if (users[user].phone === phone) {
+                        users[user].password = newPassword;
+                        localStorage.setItem('users', JSON.stringify(users));
+                        clearInterval(otpTimer);
+                        alert('Password reset successfully! Please log in.');
+                        showLogin();
+                        break;
+                    }
+                }
+            } else {
+                alert('Invalid or expired OTP!');
+            }
+        }
+
+        function quit() {
+            window.close();
+            alert('App closed. (Note: window.close() may not work in all browsers.)');
+        }
+
+        function logout() {
+            currentUser = null;
+            showSection('loginContainer');
+        }
+
+        // Camera and Image Processing
+        function openCamera() {
+            showSection('cameraInterface');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => document.getElementById('video').srcObject = stream)
+                .catch(() => alert('Camera access denied!'));
+        }
+
+        function captureImage() {
+            const video = document.getElementById('video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const imgData = canvas.toDataURL('image/png');
+            video.srcObject.getTracks().forEach(track => track.stop());
+            processImage(imgData, true); // True indicates camera capture
+        }
+
+        function uploadImage() {
+            showSection('uploadInterface');
+            const input = document.getElementById('imageUpload');
+            input.value = ''; // Reset input
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = () => processImage(reader.result, false); // False indicates upload
+                reader.readAsDataURL(file);
+            }, { once: true });
+        }
+
+        function processImage(imgData, isCameraCapture) {
+            const img = new Image();
+            img.src = imgData;
+            img.onload = () => {
+                const isHumanFace = Math.random() > 0.2; // Simulated 80% chance for demo
+                document.getElementById('capturedImage').src = imgData;
+                document.getElementById('capturedImage').style.display = 'block';
+                if (!isHumanFace) {
+                    document.getElementById('stressResult').innerHTML = 'ERROR: Human face not detected. Please try again.';
+                    return;
+                }
+                const eyeStrain = Math.random() * 100;
+                const muscleTension = Math.random() * 100;
+                const stressLevel = Math.round(eyeStrain * 0.4 + muscleTension * 0.6);
+                const emoji = stressLevel > 50 ? '😢' : '😊';
+                let result = `Stress Level: ${stressLevel}% <div class="emoji">${emoji}</div>`;
+                if (stressLevel > 50) {
+                    result += '<p>Precautions: Take deep breaths, rest, or consult a professional.</p><p>Health Tips: Reduce stress with meditation or exercise.</p>';
+                }
+                document.getElementById('stressResult').innerHTML = result;
+            };
+            showSection('uploadInterface');
+        }
+
+        // Settings Functions
+        function toggleSettings() {
+            document.getElementById('settingsMenu').classList.toggle('active');
+        }
+
+        function showAccount() {
+            if (!currentUser) return alert('Please log in first!');
+            const genderOptions = ['Male', 'Female'];
+            const currentGender = currentUser.gender || 'Not set';
+            const genderPrompt = prompt(`Select Gender (Current: ${currentGender}):\n1. Male\n2. Female`, '');
+            if (genderPrompt === '1' || genderPrompt === '2') {
+                currentUser.gender = genderOptions[parseInt(genderPrompt) - 1];
+                users[currentUser.name].gender = currentUser.gender;
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+            alert(`Account:\nName: ${currentUser.name}\nPhone: ${currentUser.phone}\nGender: ${currentUser.gender || 'Not set'}`);
+        }
+
+        function showAbout() {
+            alert('About: Stress Detector detects stress levels from facial images using machine learning. It helps users monitor stress and improve well-being.');
+        }
+
+        // Flower Animation
+        function createFlower() {
+            const flower = document.createElement('div');
+            flower.className = 'flower';
+            const flowerTypes = ['✿', '❀', '❁', '🌸', '🌼', '🌺'];
+            flower.textContent = flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
+            flower.style.left = Math.random() * 100 + 'vw';
+            flower.style.animationDuration = (Math.random() * 4 + 4) + 's';
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#f7d794', '#ffcc5c'];
+            flower.style.color = colors[Math.floor(Math.random() * colors.length)];
+            document.body.appendChild(flower);
+            setTimeout(() => flower.remove(), 8000);
+        }
+
+        function startFlowerAnimation() {
+            document.querySelectorAll('.flower').forEach(f => f.remove());
+            setInterval(createFlower, 100);
+        }
+
+        function createBigFlower() {
+            const flower = document.createElement('div');
+            flower.className = 'big-flower';
+            const flowerTypes = ['✿', '❀', '❁', '🌸', '🌼', '🌺'];
+            flower.textContent = flowerTypes[Math.floor(Math.random() * flowerTypes.length)];
+            flower.style.left = Math.random() * 80 + 'vw';
+            flower.style.top = Math.random() * 80 + 'vh';
+            const colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#96c93d', '#f7d794', '#ffcc5c'];
+            flower.style.color = colors[Math.floor(Math.random() * colors.length)];
+            document.body.appendChild(flower);
+        }
+
+        function startBigFlowerBackground() {
+            document.querySelectorAll('.big-flower').forEach(f => f.remove());
+            for (let i = 0; i < 5; i++) createBigFlower(); // Add 5 big flowers
+        }
+    </script>
+</body>
+</html>
